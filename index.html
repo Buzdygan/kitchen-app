@@ -25,9 +25,6 @@
             <section id="recipes-view" class="view active">
                 <div class="view-header">
                     <h2>My Recipes</h2>
-                    <button id="add-recipe-btn" class="btn primary">
-                        <i class="fas fa-plus"></i> Add New Recipe
-                    </button>
                 </div>
                 <div class="recipes-container" id="recipes-container">
                     <!-- Recipes will be displayed here -->
@@ -58,71 +55,7 @@
         <!-- Recipe Form Modal -->
         <div id="recipe-modal" class="modal">
             <div class="modal-content">
-                <span class="close-modal">&times;</span>
-                <h2 id="recipe-form-title">Add New Recipe</h2>
-                <form id="recipe-form">
-                    <div class="form-group">
-                        <label for="recipe-name">Recipe Name</label>
-                        <input type="text" id="recipe-name" required>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label for="recipe-description">Description</label>
-                        <textarea id="recipe-description"></textarea>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Recipe Image</label>
-                        <div class="image-upload-container">
-                            <div class="image-preview" id="image-preview">
-                                <div class="image-preview-placeholder">
-                                    <i class="fas fa-image fa-3x"></i>
-                                    <p>Image preview will appear here</p>
-                                </div>
-                            </div>
-                            <div class="image-upload-options">
-                                <div class="file-input-container">
-                                    <div class="image-upload-button">
-                                        <i class="fas fa-upload"></i> Upload Image
-                                    </div>
-                                    <input type="file" id="recipe-image-file" accept="image/*">
-                                </div>
-                                <div>
-                                    <input type="text" id="recipe-image-url" placeholder="Or paste image URL">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Sections</label>
-                        <div id="sections-container">
-                            <!-- Sections will be added here -->
-                        </div>
-                        <button type="button" id="add-section-btn" class="btn secondary">
-                            <i class="fas fa-plus"></i> Add Section
-                        </button>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Ingredients</label>
-                        <div id="ingredients-container">
-                            <!-- Ingredients will be added here -->
-                        </div>
-                        <button type="button" id="add-ingredient-btn" class="btn secondary">
-                            <i class="fas fa-plus"></i> Add Ingredient
-                        </button>
-                    </div>
-                    
-                    <div class="form-actions">
-                        <button type="submit" class="btn primary">
-                            <i class="fas fa-save"></i> Save Recipe
-                        </button>
-                        <button type="button" id="cancel-recipe-btn" class="btn">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
-                </form>
+                <!-- Modal content is dynamically generated in JavaScript -->
             </div>
         </div>
 

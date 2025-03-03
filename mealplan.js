@@ -84,7 +84,12 @@ function createDayElement(date, dateString) {
             
             if (recipe) {
                 // Display planned meal
-                const selectedMeal = createElement('div', { class: 'selected-meal' });
+                const selectedMeal = createElement('div', { 
+                    class: 'selected-meal',
+                    'data-date': dateString,
+                    'data-meal-type': mealType,
+                    'data-recipe-id': recipe.id
+                });
                 
                 // If recipe has an image, show a small thumbnail
                 if (recipe.image) {
@@ -101,6 +106,20 @@ function createDayElement(date, dateString) {
                 const nameSpan = createElement('span', { class: 'meal-name' }, recipe.name);
                 selectedMeal.appendChild(nameSpan);
                 
+                // Add remove button
+                const removeBtn = createElement('button', { 
+                    class: 'meal-remove-btn',
+                    title: 'Remove meal'
+                });
+                removeBtn.innerHTML = '×';
+                
+                // Add click handler for remove button
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation(); // Prevent opening meal selection modal
+                    removeMealFromSlot(dateString, mealType);
+                });
+                
+                selectedMeal.appendChild(removeBtn);
                 mealSlot.appendChild(selectedMeal);
             } else {
                 // Recipe not found, show placeholder
@@ -127,6 +146,11 @@ function setupMealPlanEventListeners() {
     // Meal selection
     const calendarContainer = document.getElementById('calendar-container');
     calendarContainer.addEventListener('click', (e) => {
+        // Handle clicks on meal placeholders or selected meals (but not on remove buttons)
+        if (e.target.closest('.meal-remove-btn')) {
+            return; // Ignore clicks on remove buttons, they're handled separately
+        }
+        
         const mealPlaceholder = e.target.closest('.meal-placeholder');
         const selectedMeal = e.target.closest('.selected-meal');
         
@@ -216,6 +240,36 @@ function openMealSelectionModal() {
     openModal('meal-selection-modal');
 }
 
+// Remove meal from slot
+function removeMealFromSlot(date, mealType) {
+    // Update app data
+    const appData = getAppData();
+    
+    if (appData.mealPlan[date] && appData.mealPlan[date][mealType]) {
+        // Remove the meal from this slot
+        delete appData.mealPlan[date][mealType];
+        
+        // If this date has no meals left, remove the date entry
+        if (Object.keys(appData.mealPlan[date]).length === 0) {
+            delete appData.mealPlan[date];
+        }
+        
+        // Save changes
+        saveAppData(appData);
+        
+        // Update current data
+        currentMealPlan = appData.mealPlan;
+        
+        // Refresh calendar
+        generateCalendar();
+        
+        // Refresh shopping list
+        if (typeof initializeShoppingList === 'function') {
+            initializeShoppingList(appData.mealPlan, appData.recipes);
+        }
+    }
+}
+
 // Select a meal for a slot
 function selectMealForSlot(recipeId) {
     // Update meal plan data
@@ -252,4 +306,8 @@ function selectMealForSlot(recipeId) {
     if (typeof initializeShoppingList === 'function') {
         initializeShoppingList(appData.mealPlan, appData.recipes);
     }
+}
+
+function setupRecipeListEventListeners() {
+    // Implementation of setupRecipeListEventListeners function
 } 
