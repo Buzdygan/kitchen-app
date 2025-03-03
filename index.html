@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kitchen Planner</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>Kitchen Planner</h1>
+            <nav>
+                <ul>
+                    <li><a href="#" class="nav-link active" data-view="recipes">Recipes</a></li>
+                    <li><a href="#" class="nav-link" data-view="meal-plan">Meal Plan</a></li>
+                    <li><a href="#" class="nav-link" data-view="shopping-list">Shopping List</a></li>
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Recipes View -->
+            <section id="recipes-view" class="view active">
+                <div class="view-header">
+                    <h2>My Recipes</h2>
+                    <button id="add-recipe-btn" class="btn primary">
+                        <i class="fas fa-plus"></i> Add New Recipe
+                    </button>
+                </div>
+                <div class="recipes-container" id="recipes-container">
+                    <!-- Recipes will be displayed here -->
+                </div>
+            </section>
+
+            <!-- Meal Plan View -->
+            <section id="meal-plan-view" class="view">
+                <div class="view-header">
+                    <h2>Meal Plan</h2>
+                </div>
+                <div class="calendar-container" id="calendar-container">
+                    <!-- Calendar will be displayed here -->
+                </div>
+            </section>
+
+            <!-- Shopping List View -->
+            <section id="shopping-list-view" class="view">
+                <div class="view-header">
+                    <h2>Shopping List</h2>
+                </div>
+                <div class="shopping-list-container" id="shopping-list-container">
+                    <!-- Shopping list will be displayed here -->
+                </div>
+            </section>
+        </main>
+
+        <!-- Recipe Form Modal -->
+        <div id="recipe-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2 id="recipe-form-title">Add New Recipe</h2>
+                <form id="recipe-form">
+                    <div class="form-group">
+                        <label for="recipe-name">Recipe Name</label>
+                        <input type="text" id="recipe-name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="recipe-description">Description</label>
+                        <textarea id="recipe-description"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Recipe Image</label>
+                        <div class="image-upload-container">
+                            <div class="image-preview" id="image-preview">
+                                <div class="image-preview-placeholder">
+                                    <i class="fas fa-image fa-3x"></i>
+                                    <p>Image preview will appear here</p>
+                                </div>
+                            </div>
+                            <div class="image-upload-options">
+                                <div class="file-input-container">
+                                    <div class="image-upload-button">
+                                        <i class="fas fa-upload"></i> Upload Image
+                                    </div>
+                                    <input type="file" id="recipe-image-file" accept="image/*">
+                                </div>
+                                <div>
+                                    <input type="text" id="recipe-image-url" placeholder="Or paste image URL">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Sections</label>
+                        <div id="sections-container">
+                            <!-- Sections will be added here -->
+                        </div>
+                        <button type="button" id="add-section-btn" class="btn secondary">
+                            <i class="fas fa-plus"></i> Add Section
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Ingredients</label>
+                        <div id="ingredients-container">
+                            <!-- Ingredients will be added here -->
+                        </div>
+                        <button type="button" id="add-ingredient-btn" class="btn secondary">
+                            <i class="fas fa-plus"></i> Add Ingredient
+                        </button>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn primary">
+                            <i class="fas fa-save"></i> Save Recipe
+                        </button>
+                        <button type="button" id="cancel-recipe-btn" class="btn">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Meal Selection Modal -->
+        <div id="meal-selection-modal" class="modal">
+            <div class="modal-content">
+                <span class="close-modal">&times;</span>
+                <h2>Select a Recipe</h2>
+                <div id="recipe-selection-container">
+                    <!-- Recipes for selection will be displayed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load scripts in the correct order -->
+    <script src="recipes.js"></script>
+    <script src="mealplan.js"></script>
+    <script src="shoppinglist.js"></script>
+    <script src="app.js"></script>
+</body>
+</html> 
