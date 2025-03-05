@@ -1,0 +1,19 @@
+{
+  "name": "kitchen-planner",
+  "version": "1.0.0",
+  "description": "A meal planning and recipe management app",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "firebase serve --only hosting",
+    "deploy": "firebase deploy --only hosting"
+  },
+  "dependencies": {
+    "firebase": "^10.6.0"
+  },
+  "devDependencies": {
+    "firebase-tools": "^12.9.1"
+  },
+  "author": "",
+  "license": "MIT"
+}
