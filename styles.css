@@ -1313,4 +1313,129 @@ select option {
 
 .new-recipe-card:hover .recipe-card-header {
     font-weight: bold;
+}
+
+/* Authentication Styles */
+.auth-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease;
+}
+
+.auth-container.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.auth-content {
+    background-color: var(--white);
+    border-radius: var(--border-radius);
+    box-shadow: var(--hover-shadow);
+    width: 90%;
+    max-width: 450px;
+    overflow: hidden;
+    position: relative;
+}
+
+.auth-form {
+    padding: 32px;
+    display: none;
+}
+
+.auth-form.active {
+    display: block;
+    animation: fadeIn 0.3s ease;
+}
+
+.auth-header {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.auth-header h2 {
+    color: var(--primary-color);
+    margin-bottom: 8px;
+}
+
+.auth-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    font-size: 1rem;
+}
+
+.google-btn {
+    width: 100%;
+    margin-top: 12px;
+    background-color: #4285F4;
+    color: white;
+}
+
+.google-btn:hover {
+    background-color: #3367D6;
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: 24px;
+    font-size: 0.9rem;
+}
+
+.auth-switch a {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.auth-switch a:hover {
+    text-decoration: underline;
+}
+
+.auth-message {
+    margin-top: 16px;
+    padding: 8px 0;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.error-message {
+    color: #f44336;
+}
+
+.success-message {
+    color: var(--primary-color);
+}
+
+/* User Profile */
+.user-profile {
+    display: none;
+    align-items: center;
+    gap: 16px;
+    margin-left: auto;
+}
+
+.user-profile.active {
+    display: flex;
+}
+
+#user-display-name {
+    font-weight: 500;
+    color: var(--primary-dark);
+}
+
+/* Blur effect for app when auth is open */
+.app-container.blur {
+    filter: blur(4px);
+    pointer-events: none;
 } 

@@ -559,7 +559,7 @@ function openRecipeForm(recipeId = null) {
     currentImageData = null;
     
     // Open modal first to make sure the DOM is updated
-    openModal('recipe-modal');
+    window.openModal('recipe-modal');
     
     // Only set up auto-save when the modal is in the DOM
     // Use requestAnimationFrame for better timing
@@ -718,7 +718,7 @@ function autoSaveRecipe() {
         description,
         ingredients,
         image: currentImageData,
-        id: editingRecipeId || generateId()
+        id: editingRecipeId || window.generateId()
     };
     
     // If this is a new recipe, set the ID
@@ -727,7 +727,7 @@ function autoSaveRecipe() {
     }
     
     // Update app data
-    const appData = getAppData();
+    const appData = window.getAppData();
     
     if (editingRecipeId) {
         // Update existing recipe or add new
@@ -743,7 +743,7 @@ function autoSaveRecipe() {
     appData.ingredients = [...new Set([...appData.ingredients, ...currentIngredients])];
     
     // Save data
-    saveAppData(appData);
+    window.saveAppData(appData);
     
     // Update current data
     currentRecipes = appData.recipes;
@@ -752,12 +752,12 @@ function autoSaveRecipe() {
     displayRecipes();
     
     // Update meal plan and shopping list views to reflect the changes
-    if (typeof initializeMealPlan === 'function') {
-        initializeMealPlan(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeMealPlan === 'function') {
+        window.initializeMealPlan(appData.mealPlan, appData.recipes);
     }
     
-    if (typeof initializeShoppingList === 'function') {
-        initializeShoppingList(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeShoppingList === 'function') {
+        window.initializeShoppingList(appData.mealPlan, appData.recipes);
     }
     
     // Update save indicator
@@ -946,11 +946,11 @@ function saveRecipe() {
         description,
         ingredients,
         image: currentImageData,
-        id: editingRecipeId || generateId()
+        id: editingRecipeId || window.generateId()
     };
     
     // Update app data
-    const appData = getAppData();
+    const appData = window.getAppData();
     
     if (editingRecipeId) {
         // Update existing recipe
@@ -967,7 +967,7 @@ function saveRecipe() {
     appData.ingredients = [...new Set([...appData.ingredients, ...currentIngredients])];
     
     // Save data
-    saveAppData(appData);
+    window.saveAppData(appData);
     
     // Update current data
     currentRecipes = appData.recipes;
@@ -982,19 +982,19 @@ function saveRecipe() {
     currentImageData = null;
     
     // Update meal plan and shopping list views to reflect the changes
-    if (typeof initializeMealPlan === 'function') {
-        initializeMealPlan(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeMealPlan === 'function') {
+        window.initializeMealPlan(appData.mealPlan, appData.recipes);
     }
     
-    if (typeof initializeShoppingList === 'function') {
-        initializeShoppingList(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeShoppingList === 'function') {
+        window.initializeShoppingList(appData.mealPlan, appData.recipes);
     }
 }
 
 // Delete recipe
 function deleteRecipe(recipeId) {
     // Update app data
-    const appData = getAppData();
+    const appData = window.getAppData();
     appData.recipes = appData.recipes.filter(recipe => recipe.id !== recipeId);
     
     // Remove from meal plan
@@ -1014,7 +1014,7 @@ function deleteRecipe(recipeId) {
     }
     
     // Save data
-    saveAppData(appData);
+    window.saveAppData(appData);
     
     // Update current data
     currentRecipes = appData.recipes;
@@ -1023,11 +1023,17 @@ function deleteRecipe(recipeId) {
     displayRecipes();
     
     // Refresh meal plan and shopping list
-    if (typeof initializeMealPlan === 'function') {
-        initializeMealPlan(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeMealPlan === 'function') {
+        window.initializeMealPlan(appData.mealPlan, appData.recipes);
     }
     
-    if (typeof initializeShoppingList === 'function') {
-        initializeShoppingList(appData.mealPlan, appData.recipes);
+    if (typeof window.initializeShoppingList === 'function') {
+        window.initializeShoppingList(appData.mealPlan, appData.recipes);
     }
-} 
+}
+
+// Make the functions available globally
+window.initializeRecipes = initializeRecipes;
+window.displayRecipes = displayRecipes;
+window.openRecipeForm = openRecipeForm;
+window.deleteRecipe = deleteRecipe; 

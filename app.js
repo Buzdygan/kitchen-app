@@ -1,5 +1,12 @@
 // Main app functionality
+import { initAuth, saveUserData, getCurrentUser, isUserLoggedIn } from './auth.js';
+
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("App initializing...");
+    
+    // Initialize authentication
+    initAuth();
+    
     // Initialize data from localStorage or set defaults
     initializeApp();
     
@@ -26,9 +33,23 @@ function initializeApp() {
     const data = getAppData();
     
     // Initialize each component
-    initializeRecipes(data.recipes, data.ingredients);
-    initializeMealPlan(data.mealPlan, data.recipes);
-    initializeShoppingList(data.mealPlan, data.recipes);
+    if (typeof window.initializeRecipes === 'function') {
+        window.initializeRecipes(data.recipes, data.ingredients);
+    } else {
+        console.error("initializeRecipes function not available");
+    }
+    
+    if (typeof window.initializeMealPlan === 'function') {
+        window.initializeMealPlan(data.mealPlan, data.recipes);
+    } else {
+        console.log("initializeMealPlan function not available yet");
+    }
+    
+    if (typeof window.initializeShoppingList === 'function') {
+        window.initializeShoppingList(data.mealPlan, data.recipes);
+    } else {
+        console.log("initializeShoppingList function not available yet");
+    }
 }
 
 // Get app data from localStorage
@@ -36,9 +57,15 @@ function getAppData() {
     return JSON.parse(localStorage.getItem('kitchenPlannerData'));
 }
 
-// Save app data to localStorage
+// Save app data to localStorage and Firestore if user is logged in
 function saveAppData(data) {
+    // Save to localStorage first (for offline functionality)
     localStorage.setItem('kitchenPlannerData', JSON.stringify(data));
+    
+    // If user is logged in, also save to Firestore
+    if (isUserLoggedIn()) {
+        saveUserData(data);
+    }
 }
 
 // Setup navigation between views
@@ -74,13 +101,19 @@ function refreshView(viewType) {
     
     switch (viewType) {
         case 'recipes':
-            initializeRecipes(data.recipes, data.ingredients);
+            if (typeof window.initializeRecipes === 'function') {
+                window.initializeRecipes(data.recipes, data.ingredients);
+            }
             break;
         case 'meal-plan':
-            initializeMealPlan(data.mealPlan, data.recipes);
+            if (typeof window.initializeMealPlan === 'function') {
+                window.initializeMealPlan(data.mealPlan, data.recipes);
+            }
             break;
         case 'shopping-list':
-            initializeShoppingList(data.mealPlan, data.recipes);
+            if (typeof window.initializeShoppingList === 'function') {
+                window.initializeShoppingList(data.mealPlan, data.recipes);
+            }
             break;
     }
 }
@@ -92,9 +125,11 @@ function openModal(modalId) {
     
     // Add event listener to close button
     const closeBtn = modal.querySelector('.close-modal');
-    closeBtn.addEventListener('click', () => {
-        closeModal(modalId);
-    });
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            closeModal(modalId);
+        });
+    }
     
     // Close modal when clicking outside
     modal.addEventListener('click', (e) => {
@@ -139,4 +174,21 @@ function createElement(tag, attributes = {}, content = '') {
 // Helper function to generate unique ID
 function generateId() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
-} 
+}
+
+// Export functions used by other modules
+window.getAppData = getAppData;
+window.saveAppData = saveAppData;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.formatDate = formatDate;
+window.createElement = createElement;
+window.generateId = generateId;
+
+// Add debug export to allow checking initialization
+window.debugKitchenPlanner = {
+    getAppData,
+    saveAppData,
+    getCurrentUser: () => getCurrentUser(),
+    isUserLoggedIn: () => isUserLoggedIn()
+}; 
