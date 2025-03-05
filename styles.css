@@ -747,10 +747,17 @@ textarea {
     border: none;
     font-size: 20px;
     transition: var(--transition);
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
 }
 
 .remove-btn:hover {
     transform: scale(1.2);
+    background-color: rgba(244, 67, 54, 0.1);
 }
 
 /* Image Upload */
@@ -912,33 +919,71 @@ textarea {
 }
 
 .autocomplete-results {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    max-height: 200px;
+    position: fixed;
+    width: auto;
+    max-width: 350px;
+    max-height: 250px;
     overflow-y: auto;
     background-color: var(--white);
     border: 1px solid var(--medium-gray);
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
-    box-shadow: var(--shadow);
-    z-index: 10;
+    border-radius: var(--border-radius);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+    z-index: 1500;
     display: none;
 }
 
-.autocomplete-results.active {
-    display: block;
-    animation: fadeIn 0.2s ease;
+/* Ensure the modal content doesn't interfere with the dropdown */
+#recipe-modal .modal-content {
+    z-index: 1000;
 }
 
+/* Fix for autocomplete dropdown being cut off */
+#ingredients-container {
+    padding: 16px;
+    position: relative;
+    overflow: visible !important;
+}
+
+.ingredients-container-wrapper {
+    border: 1px solid var(--medium-gray);
+    border-radius: 8px;
+    overflow: visible;
+}
+
+/* Ensure the autocomplete dropdown is visible outside container boundaries */
+.ingredient-item {
+    position: relative;
+    z-index: 1;
+}
+
+.ingredient-item:focus-within {
+    z-index: 10;
+}
+
+/* Make dropdown more noticeable */
+.autocomplete-results.active {
+    display: block;
+    animation: fadeIn 0.1s ease;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+/* Improve item hover state */
 .autocomplete-item {
     padding: 10px 12px;
     cursor: pointer;
     transition: var(--transition);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.autocomplete-item:last-child {
+    border-bottom: none;
 }
 
 .autocomplete-item:hover, .autocomplete-item.selected {
-    background-color: var(--light-gray);
+    background-color: rgba(76, 175, 80, 0.1);
 }
 
 .autocomplete-item .highlight {
@@ -1028,6 +1073,7 @@ select option {
     padding: 0 28px 28px;
     overflow-y: auto;
     flex: 1;
+    max-height: 80vh;
 }
 
 #recipe-form {
@@ -1151,6 +1197,9 @@ select option {
     padding: 12px 16px;
     background-color: var(--light-gray);
     border-bottom: 1px solid var(--medium-gray);
+    position: sticky;
+    top: 0;
+    z-index: 5;
 }
 
 .ingredients-header h3 {
@@ -1162,9 +1211,6 @@ select option {
 
 #ingredients-container {
     padding: 16px;
-    max-height: 250px;
-    overflow-y: auto;
-    scrollbar-width: thin;
 }
 
 .ingredient-item {
@@ -1438,4 +1484,176 @@ select option {
 .app-container.blur {
     filter: blur(4px);
     pointer-events: none;
+}
+
+/* Improved ingredient input styles */
+.ingredient-item.empty-row {
+    background-color: rgba(76, 175, 80, 0.05);
+    border: 1px dashed var(--primary-color);
+    border-radius: var(--border-radius);
+}
+
+.ingredient-item.empty-row input::placeholder,
+.ingredient-item.empty-row select {
+    color: var(--primary-color);
+    opacity: 0.8;
+}
+
+.placeholder-btn {
+    opacity: 0.5;
+    cursor: default;
+    color: var(--primary-color);
+}
+
+.new-ingredient-option {
+    color: var(--primary-color);
+    font-weight: 500;
+    border-top: 1px solid var(--medium-gray);
+    padding-top: 8px;
+    margin-top: 4px;
+}
+
+.new-ingredient-option i {
+    margin-right: 5px;
+}
+
+.new-ingredient-option:hover {
+    background-color: rgba(76, 175, 80, 0.1);
+}
+
+/* Make sure autocomplete looks good */
+.autocomplete-results {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.autocomplete-item {
+    padding: 8px 12px;
+}
+
+/* Style the ingredient item layout */
+.ingredient-item {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 30px;
+    gap: 10px;
+    padding: 8px 12px;
+    align-items: center;
+    margin-bottom: 8px;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .ingredient-item {
+        grid-template-columns: 1fr 70px 70px 30px;
+        gap: 5px;
+    }
+}
+
+/* Ingredient delete button in autocomplete */
+.autocomplete-item.with-delete-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 8px;
+}
+
+.autocomplete-item-name {
+    flex: 1;
+    pointer-events: none; /* Make sure clicks pass through to parent */
+}
+
+.ingredient-delete-btn {
+    background-color: #ff5252;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    line-height: 16px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 8px;
+    transition: all 0.2s ease;
+    z-index: 10; /* Higher z-index so it's clearly interactive */
+    position: relative; /* Position relative to keep it above */
+}
+
+.ingredient-delete-btn:hover {
+    background-color: #ff1744;
+    transform: scale(1.1);
+}
+
+/* Make it clearer that autocomplete items are clickable */
+.autocomplete-item {
+    position: relative;
+    cursor: pointer;
+    padding: 8px 12px;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+/* Preserve the dropdown during deletion */
+.autocomplete-results.preserving {
+    display: block !important;
+    z-index: 1600 !important;
+}
+
+/* Make sure the delete button is clearly separated from the item */
+.ingredient-delete-btn {
+    background-color: #ff5252;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 22px;
+    height: 22px;
+    line-height: 18px;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 10px;
+    transition: all 0.2s ease;
+    z-index: 20;
+    position: relative;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    flex-shrink: 0;
+}
+
+.ingredient-delete-btn:hover {
+    background-color: #ff1744;
+    transform: scale(1.1);
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+/* Better style autocomplete items to make the click targets clearer */
+.autocomplete-item {
+    position: relative;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.autocomplete-item.with-delete-btn {
+    padding-right: 8px;
+    justify-content: space-between;
+}
+
+.autocomplete-item-name {
+    pointer-events: none;
+    flex-grow: 1;
+}
+
+/* Make the dropdown more noticeable */
+.autocomplete-results {
+    background: white;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: 1px solid rgba(0,0,0,0.1);
 } 

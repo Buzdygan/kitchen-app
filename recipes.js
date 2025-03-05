@@ -7,6 +7,13 @@ let activeAutocompleteField = null;
 let selectedAutocompleteIndex = -1;
 let autoSaveTimeout = null;
 
+// Add a flag to track deletion actions
+let isRemovingIngredient = false;
+
+// Add a flag to track if we're currently editing or adding a new ingredient
+let isAddingNewIngredient = false;
+let initialInputValue = '';
+
 // Initialize recipes component
 function initializeRecipes(recipes, ingredients) {
     currentRecipes = recipes;
@@ -206,13 +213,6 @@ function setupRecipeEventListeners() {
     imageUrlInput.addEventListener('change', handleImageUrlInput);
     imageUrlInput.addEventListener('paste', handleImageUrlInput);
     
-    // Global click handler to close autocomplete dropdowns
-    document.addEventListener('click', (e) => {
-        if (!e.target.closest('.autocomplete-container')) {
-            closeAllAutocompleteDropdowns();
-        }
-    });
-
     // Global key handler for autocomplete navigation
     document.addEventListener('keydown', (e) => {
         if (!activeAutocompleteField) return;
@@ -241,10 +241,68 @@ function setupRecipeEventListeners() {
                 }
                 break;
             case 'Escape':
-                closeAllAutocompleteDropdowns();
+                e.preventDefault();
+                // Handle Escape key - cancel current editing and restore original value
+                handleEscapeKeyForAutocomplete();
                 break;
         }
     });
+}
+
+// Handle global click and right-click events
+function handleGlobalClick(e) {
+    // If no autocomplete field is active or we're removing an ingredient, do nothing
+    if (!activeAutocompleteField || isRemovingIngredient) return;
+
+    
+    const resultsContainer = activeAutocompleteField.nextElementSibling;
+    if (!resultsContainer || !resultsContainer.classList.contains('active')) return;
+
+    // Get the clicked element
+    const clickedElement = e.target;
+    
+    // Check if the click is on the active autocomplete field itself
+    const clickedOnActiveField = activeAutocompleteField === clickedElement || 
+                                activeAutocompleteField.contains(clickedElement);
+    
+    // Check if the click is on the dropdown
+    const clickedOnDropdown = resultsContainer === clickedElement || 
+                             resultsContainer.contains(clickedElement);
+    
+    // If click is outside both the input field and its dropdown, dismiss it
+    if (!clickedOnActiveField && !clickedOnDropdown) {
+        // For right-click (context menu), prevent the default menu
+        if (e.type === 'contextmenu') {
+            e.preventDefault();
+        }
+        
+        // Cancel editing just like pressing Escape
+        handleEscapeKeyForAutocomplete();
+        
+        // Ensure the dropdown is closed
+        closeAllAutocompleteDropdowns();
+    }
+}
+
+// Extracted function to handle Escape key behavior for reuse with clicks
+function handleEscapeKeyForAutocomplete() {
+    if (!activeAutocompleteField) return;
+    
+    const ingredientItem = activeAutocompleteField.closest('.ingredient-item');
+    
+    // If adding a new ingredient, clear the input
+    if (isAddingNewIngredient) {
+        activeAutocompleteField.value = '';
+    } else {
+        // For existing ingredient, restore to original value
+        activeAutocompleteField.value = initialInputValue;
+    }
+    
+    // Close the dropdown
+    closeAllAutocompleteDropdowns();
+    
+    // Reset the adding flag
+    isAddingNewIngredient = false;
 }
 
 // Update selected autocomplete item
@@ -261,11 +319,25 @@ function updateSelectedAutocompleteItem(items) {
 
 // Close all autocomplete dropdowns
 function closeAllAutocompleteDropdowns() {
-    document.querySelectorAll('.autocomplete-results').forEach(dropdown => {
+    // Find and close all active dropdowns
+    document.querySelectorAll('.autocomplete-results.active').forEach(dropdown => {
         dropdown.classList.remove('active');
+        dropdown.classList.remove('preserving');
     });
+    
+    // Reset active field and selection index
     activeAutocompleteField = null;
     selectedAutocompleteIndex = -1;
+}
+
+// Position autocomplete dropdown relative to input
+function positionAutocompleteDropdown(inputField, dropdown) {
+    if (!inputField || !dropdown) return;
+    
+    const rect = inputField.getBoundingClientRect();
+    dropdown.style.width = `${rect.width}px`;
+    dropdown.style.left = `${rect.left}px`;
+    dropdown.style.top = `${rect.bottom + window.scrollY}px`;
 }
 
 // Fuzzy match function for ingredients
@@ -313,6 +385,133 @@ function fuzzyMatch(pattern, str) {
     return { match: false };
 }
 
+// Check if an ingredient is used in any recipe
+function isIngredientUsedInRecipes(ingredientName) {
+    // Check in all recipes except the currently editing recipe
+    // This allows removing unused ingredients even if they're in the current recipe form
+    return currentRecipes.some(recipe => {
+        // Skip the current recipe being edited (we don't want to consider it when checking)
+        if (editingRecipeId && recipe.id === editingRecipeId) {
+            return false;
+        }
+        
+        // Check if the ingredient is used in this recipe
+        return recipe.ingredients.some(ingredient => 
+            ingredient.name.toLowerCase() === ingredientName.toLowerCase()
+        );
+    });
+}
+
+// Remove an ingredient from the list
+function removeIngredient(ingredientName) {
+    // Update app data
+    const appData = window.getAppData();
+    appData.ingredients = appData.ingredients.filter(ingr => 
+        ingr.toLowerCase() !== ingredientName.toLowerCase()
+    );
+    
+    // Update current ingredients array
+    currentIngredients = currentIngredients.filter(ingr => 
+        ingr.toLowerCase() !== ingredientName.toLowerCase()
+    );
+    
+    // Save updated data
+    window.saveAppData(appData);
+    
+    console.log(`Removed ingredient: ${ingredientName}`);
+}
+
+// Show confirmation dialog for ingredient removal
+function showIngredientRemovalConfirmation(ingredientName, event) {
+    // Set the removing flag to true to prevent other events from processing
+    isRemovingIngredient = true;
+    
+    // Prevent any default action and stop event propagation
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    // Create confirmation dialog
+    const dialog = createElement('div', { class: 'confirmation-dialog' });
+    
+    const content = createElement('div', { class: 'confirmation-content ingredient-removal' });
+    
+    const title = createElement('h3', { class: 'confirmation-title' }, 'Remove Ingredient?');
+    
+    const message = createElement('p', { class: 'confirmation-message' }, 
+        `Are you sure you want to remove "${ingredientName}" from your ingredients list?`);
+    
+    const actions = createElement('div', { class: 'confirmation-actions' });
+    
+    const cancelBtn = createElement('button', { class: 'confirmation-btn cancel' }, 'Cancel');
+    cancelBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        document.body.removeChild(dialog);
+        
+        // Reset the removing flag after a short delay to ensure other events are handled properly
+        setTimeout(() => {
+            isRemovingIngredient = false;
+        }, 100);
+        
+        return false;
+    });
+    
+    const confirmBtn = createElement('button', { class: 'confirmation-btn confirm' }, 'Remove');
+    confirmBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        document.body.removeChild(dialog);
+        removeIngredient(ingredientName);
+        
+        // If the active input contains this ingredient name, clear it
+        if (activeAutocompleteField && 
+            activeAutocompleteField.value.toLowerCase() === ingredientName.toLowerCase()) {
+            activeAutocompleteField.value = '';
+        }
+        
+        // Refresh the autocomplete dropdown if there's an active field
+        if (activeAutocompleteField) {
+            handleIngredientInput({ target: activeAutocompleteField });
+        }
+        
+        // Reset the removing flag after a short delay
+        setTimeout(() => {
+            isRemovingIngredient = false;
+        }, 100);
+        
+        return false;
+    });
+    
+    // Add close handler that also resets the flag
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.removeChild(dialog);
+            
+            // Reset the removing flag
+            setTimeout(() => {
+                isRemovingIngredient = false;
+            }, 100);
+            
+            return false;
+        }
+    });
+    
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    
+    content.appendChild(title);
+    content.appendChild(message);
+    content.appendChild(actions);
+    dialog.appendChild(content);
+    
+    // Add to body
+    document.body.appendChild(dialog);
+}
+
 // Handle ingredient input for autocomplete
 function handleIngredientInput(e) {
     const input = e.target;
@@ -341,13 +540,76 @@ function handleIngredientInput(e) {
         .filter(result => result !== null)
         .sort((a, b) => b.score - a.score);
     
-    if (matches.length === 0) {
-        const noResults = createElement('div', { class: 'no-results' }, 'No matching ingredients found');
-        resultsContainer.appendChild(noResults);
-    } else {
+    // Always add option to create new ingredient if we have a query
+    if (query.length > 0) {
+        const newOption = createElement('div', { class: 'autocomplete-item new-ingredient-option' });
+        newOption.innerHTML = `<i class="fas fa-plus"></i> Add new ingredient: <strong>${query}</strong>`;
+        
+        newOption.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            input.value = query;
+            resultsContainer.classList.remove('active');
+            activeAutocompleteField = null;
+            
+            // If this is the empty row, convert it to a regular row
+            const ingredientItem = input.closest('.ingredient-item');
+            if (ingredientItem.classList.contains('empty-row')) {
+                ingredientItem.classList.remove('empty-row');
+                convertPlaceholderToDeleteButton(ingredientItem);
+                ensureEmptyIngredientRow();
+            }
+            
+            // Trigger save
+            triggerAutoSave();
+        });
+        
+        resultsContainer.appendChild(newOption);
+    }
+    
+    // Add matching ingredients
+    if (matches.length > 0) {
         matches.forEach(match => {
             const item = createElement('div', { class: 'autocomplete-item' });
-            item.innerHTML = match.highlighted;
+            
+            // Create a container for the ingredient name to allow for the delete button
+            const nameContainer = createElement('span', { class: 'autocomplete-item-name' });
+            nameContainer.innerHTML = match.highlighted;
+            item.appendChild(nameContainer);
+            
+            // Add delete button for unused ingredients
+            const isUsed = isIngredientUsedInRecipes(match.ingredient);
+            if (!isUsed) {
+                const deleteBtn = createElement('button', { 
+                    class: 'ingredient-delete-btn',
+                    title: 'Remove this ingredient'
+                }, '×');
+                
+                // We need a separate mousedown handler that prevents the blur event
+                deleteBtn.addEventListener('mousedown', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+                
+                deleteBtn.addEventListener('click', (e) => {
+                    // Explicitly prevent default action and stop propagation
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Prevent the dropdown from closing
+                    e.currentTarget.closest('.autocomplete-results').classList.add('preserving');
+                    
+                    // Show confirmation dialog, passing the event
+                    showIngredientRemovalConfirmation(match.ingredient, e);
+                    
+                    // Return false to prevent bubbling
+                    return false;
+                });
+                
+                item.appendChild(deleteBtn);
+                item.classList.add('with-delete-btn');
+            }
             
             if (match.score < 0.8) {
                 const scoreElement = createElement('span', { class: 'ingredient-match-score' }, 
@@ -355,17 +617,72 @@ function handleIngredientInput(e) {
                 item.appendChild(scoreElement);
             }
             
-            item.addEventListener('click', () => {
-                input.value = match.ingredient;
-                resultsContainer.classList.remove('active');
-                activeAutocompleteField = null;
+            // Main click handler for the item itself
+            item.addEventListener('click', (e) => {
+                // Skip if we're in the middle of removing an ingredient
+                if (isRemovingIngredient) return false;
+                
+                // Only handle clicks directly on the item or the name, not on buttons
+                if (e.target === item || e.target === nameContainer || 
+                    e.target.closest('.autocomplete-item-name')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    input.value = match.ingredient;
+                    resultsContainer.classList.remove('active');
+                    activeAutocompleteField = null;
+                    
+                    // If this is the empty row, convert it to a regular row
+                    const ingredientItem = input.closest('.ingredient-item');
+                    if (ingredientItem.classList.contains('empty-row')) {
+                        ingredientItem.classList.remove('empty-row');
+                        convertPlaceholderToDeleteButton(ingredientItem);
+                        ensureEmptyIngredientRow();
+                    }
+                    
+                    triggerAutoSave();
+                }
             });
             
             resultsContainer.appendChild(item);
         });
     }
     
-    resultsContainer.classList.add('active');
+    if (resultsContainer.childNodes.length > 0) {
+        resultsContainer.classList.add('active');
+        // Position the dropdown
+        positionAutocompleteDropdown(input, resultsContainer);
+        
+        // Add a one-time document click handler to close the dropdown
+        // when clicking outside (removed after first use)
+        const documentClickHandler = function(e) {
+            // If we're removing an ingredient, ignore the click
+            if (isRemovingIngredient) return;
+            
+            // Check if the click is on the active input or its dropdown
+            if (!e.target.closest('.autocomplete-container') && 
+                !e.target.closest('.autocomplete-results')) {
+                // Click outside - handle like Escape key
+                handleEscapeKeyForAutocomplete();
+                
+                // Clean up by removing this handler
+                document.removeEventListener('click', documentClickHandler);
+            }
+        };
+        
+        // Remove any existing document click handlers and add a new one
+        document.removeEventListener('click', documentClickHandler);
+        document.removeEventListener('contextmenu', documentClickHandler);
+        
+        // Use setTimeout to ensure this handler runs after current event cycle
+        setTimeout(() => {
+            document.addEventListener('click', documentClickHandler);
+            document.addEventListener('contextmenu', documentClickHandler);
+        }, 0);
+        
+    } else {
+        resultsContainer.classList.remove('active');
+    }
 }
 
 // Handle image file selection
@@ -588,55 +905,33 @@ function openRecipeForm(recipeId = null) {
             recipe.ingredients.forEach(ingredient => {
                 addIngredientField(null, ingredient);
             });
+            
+            // Add empty row at the end for new ingredients
+            ensureEmptyIngredientRow();
         }
     } else {
         // Adding new recipe
         editingRecipeId = null;
         
+        // Add an empty ingredient row
+        ensureEmptyIngredientRow();
+        
         // Auto-save empty recipe to get ID
         autoSaveRecipe();
     }
-    
-    // Add the "Add ingredient" placeholder at the bottom
-    addNewIngredientPlaceholder();
 }
 
-// Add a placeholder for adding new ingredients
-function addNewIngredientPlaceholder() {
+// Ensure there's always one empty ingredient row at the bottom
+function ensureEmptyIngredientRow() {
     const ingredientsContainer = document.getElementById('ingredients-container');
     
-    const placeholderRow = createElement('div', { 
-        class: 'new-ingredient-placeholder', 
-        id: 'add-ingredient-placeholder'
-    });
+    // Check if we already have an empty row
+    const emptyRows = ingredientsContainer.querySelectorAll('.ingredient-item.empty-row');
     
-    const placeholderText = createElement('span', {}, '');
-    placeholderText.innerHTML = '<i class="fas fa-plus"></i> Add a new ingredient';
-    
-    placeholderRow.appendChild(placeholderText);
-    
-    // Add click event to convert to actual ingredient form
-    placeholderRow.addEventListener('click', () => {
-        // Add a new ingredient field
-        addIngredientField();
-        
-        // Remove this placeholder - it will be re-added after
-        ingredientsContainer.removeChild(placeholderRow);
-        
-        // Focus the new ingredient input
-        setTimeout(() => {
-            const lastIngredient = ingredientsContainer.lastElementChild;
-            if (lastIngredient && lastIngredient.classList.contains('ingredient-item')) {
-                const nameInput = lastIngredient.querySelector('.autocomplete-container input');
-                if (nameInput) nameInput.focus();
-            }
-            
-            // Re-add the placeholder
-            addNewIngredientPlaceholder();
-        }, 10);
-    });
-    
-    ingredientsContainer.appendChild(placeholderRow);
+    if (emptyRows.length === 0) {
+        // Add an empty row
+        addIngredientField(null, null, true);
+    }
 }
 
 // Setup auto-save for form fields
@@ -665,8 +960,10 @@ function setupAutoSave() {
 function triggerAutoSave() {
     // Show saving indicator
     const indicator = document.getElementById('auto-save-indicator');
-    indicator.classList.add('visible', 'saving');
-    indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    if (indicator) {
+        indicator.classList.add('visible', 'saving');
+        indicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+    }
     
     // Clear existing timeout
     if (autoSaveTimeout) {
@@ -691,8 +988,8 @@ function autoSaveRecipe() {
         return;
     }
     
-    // Get ingredients
-    const ingredientItems = document.querySelectorAll('#ingredients-container .ingredient-item');
+    // Get ingredients - exclude the empty row
+    const ingredientItems = document.querySelectorAll('#ingredients-container .ingredient-item:not(.empty-row)');
     const ingredients = Array.from(ingredientItems).map(item => {
         const nameInput = item.querySelector('.autocomplete-container input');
         const quantityInput = item.querySelector('input[type="number"]');
@@ -812,18 +1109,14 @@ function addSectionField(e = null, sectionName = '') {
 }
 
 // Add an ingredient field to the form
-function addIngredientField(e = null, ingredientData = null) {
+function addIngredientField(e = null, ingredientData = null, isEmptyRow = false) {
     if (e) e.preventDefault();
     
     const ingredientsContainer = document.getElementById('ingredients-container');
     
-    // Remove the placeholder if it exists (it will be re-added later)
-    const placeholder = document.getElementById('add-ingredient-placeholder');
-    if (placeholder) {
-        ingredientsContainer.removeChild(placeholder);
-    }
-    
-    const ingredientItem = createElement('div', { class: 'ingredient-item' });
+    const ingredientItem = createElement('div', { 
+        class: isEmptyRow ? 'ingredient-item empty-row' : 'ingredient-item'
+    });
     
     // Ingredient name with autocomplete
     const nameContainer = createElement('div', { class: 'autocomplete-container' });
@@ -837,13 +1130,88 @@ function addIngredientField(e = null, ingredientData = null) {
     // Autocomplete results container
     const resultsContainer = createElement('div', { class: 'autocomplete-results' });
     
+    // Track input focus to know when we're starting to edit
+    nameInput.addEventListener('focus', (e) => {
+        // Save the initial value when focusing, so we can restore if needed
+        initialInputValue = nameInput.value;
+        isAddingNewIngredient = ingredientItem.classList.contains('empty-row');
+        
+        // Trigger autocomplete if we have content
+        handleIngredientInput(e);
+    });
+    
     // Add event listeners for autocomplete
     nameInput.addEventListener('input', handleIngredientInput);
-    nameInput.addEventListener('focus', handleIngredientInput);
     nameInput.addEventListener('click', (e) => {
         e.stopPropagation();
         if (nameInput.value.trim()) {
             handleIngredientInput(e);
+        }
+    });
+    
+    // Add event listeners for completing/confirming an ingredient
+    nameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            
+            // Only proceed if there's an actual value
+            if (nameInput.value.trim()) {
+                // If this is the empty row, create a new one and convert this to a regular row
+                if (ingredientItem.classList.contains('empty-row')) {
+                    ingredientItem.classList.remove('empty-row');
+                    
+                    // Replace the placeholder button with a delete button
+                    convertPlaceholderToDeleteButton(ingredientItem);
+                    
+                    // Add a new empty row
+                    ensureEmptyIngredientRow();
+                }
+                
+                // Close the dropdown
+                closeAllAutocompleteDropdowns();
+                
+                nameInput.blur(); // Unfocus to trigger a save
+                triggerAutoSave();
+            }
+        } else if (e.key === 'Escape') {
+            // Cancel ingredient selection using our shared function
+            e.preventDefault();
+            handleEscapeKeyForAutocomplete();
+        }
+    });
+    
+    // Save when input loses focus, but only if it has content
+    nameInput.addEventListener('blur', (e) => {
+        // Skip processing if we're in the middle of removing an ingredient
+        if (isRemovingIngredient) return;
+        
+        // Check if we're clicking on the autocomplete dropdown - but only if coordinates are valid
+        let isClickingOnDropdown = false;
+        
+        // Check if coordinates are valid finite numbers before using elementFromPoint
+        if (e.clientX && e.clientY && isFinite(e.clientX) && isFinite(e.clientY)) {
+            const clickedElement = document.elementFromPoint(e.clientX, e.clientY);
+            isClickingOnDropdown = clickedElement && 
+                (clickedElement.closest('.autocomplete-results') || 
+                 clickedElement.closest('.ingredient-delete-btn'));
+        }
+             
+        // Skip processing if clicking on dropdown
+        if (isClickingOnDropdown) return;
+        
+        // Check if the dropdown is being preserved (during delete operation)
+        const dropdown = nameInput.nextElementSibling;
+        if (dropdown && dropdown.classList.contains('preserving')) {
+            dropdown.classList.remove('preserving');
+            return;
+        }
+        
+        // Note: We don't need to handle the cancel logic here anymore
+        // as the global click handler will take care of it
+        
+        // For non-empty rows with content, trigger a save
+        if (!ingredientItem.classList.contains('empty-row') && nameInput.value.trim()) {
+            triggerAutoSave();
         }
     });
     
@@ -857,6 +1225,19 @@ function addIngredientField(e = null, ingredientData = null) {
         min: '0',
         step: '0.01',
         value: ingredientData ? ingredientData.quantity : ''
+    });
+    
+    // Add blur event to quantity input to trigger save
+    quantityInput.addEventListener('blur', () => {
+        if (nameInput.value.trim() && ingredientItem.classList.contains('empty-row')) {
+            // If this was the empty row and now has a value, convert it
+            ingredientItem.classList.remove('empty-row');
+            convertPlaceholderToDeleteButton(ingredientItem);
+            ensureEmptyIngredientRow();
+            triggerAutoSave();
+        } else if (nameInput.value.trim()) {
+            triggerAutoSave();
+        }
     });
     
     // Unit selection dropdown
@@ -884,33 +1265,95 @@ function addIngredientField(e = null, ingredientData = null) {
         unitSelect.value = 'pcs'; // Default unit
     }
     
-    // Remove button
-    const removeBtn = createElement('button', { 
-        type: 'button', 
-        class: 'remove-btn',
-        title: 'Remove ingredient'
-    }, '×');
-    
-    removeBtn.addEventListener('click', () => {
-        ingredientsContainer.removeChild(ingredientItem);
-        // Trigger auto-save after removing ingredient
-        triggerAutoSave();
-        
-        // Make sure the placeholder is still there
-        if (!document.getElementById('add-ingredient-placeholder')) {
-            addNewIngredientPlaceholder();
+    // Add change event to unit select to trigger save
+    unitSelect.addEventListener('change', () => {
+        if (nameInput.value.trim() && ingredientItem.classList.contains('empty-row')) {
+            // If this was the empty row and now has a value, convert it
+            ingredientItem.classList.remove('empty-row');
+            convertPlaceholderToDeleteButton(ingredientItem);
+            ensureEmptyIngredientRow();
+            triggerAutoSave();
+        } else if (nameInput.value.trim()) {
+            triggerAutoSave();
         }
     });
     
+    // First append all the basic elements to the ingredient item
     ingredientItem.appendChild(nameContainer);
     ingredientItem.appendChild(quantityInput);
     ingredientItem.appendChild(unitSelect);
-    ingredientItem.appendChild(removeBtn);
+    
+    // Remove button - only for non-empty rows
+    if (!isEmptyRow) {
+        // Add a delete button for regular ingredient rows
+        const removeBtn = createElement('button', { 
+            type: 'button', 
+            class: 'remove-btn',
+            title: 'Remove ingredient'
+        }, '×');
+        
+        removeBtn.addEventListener('click', () => {
+            const ingredientsContainer = document.getElementById('ingredients-container');
+            ingredientsContainer.removeChild(ingredientItem);
+            // Trigger auto-save after removing ingredient
+            triggerAutoSave();
+            
+            // Make sure we still have an empty row
+            ensureEmptyIngredientRow();
+        });
+        
+        ingredientItem.appendChild(removeBtn);
+    } else {
+        // For empty row, add a placeholder button that does nothing
+        const placeholderBtn = createElement('button', { 
+            type: 'button', 
+            class: 'remove-btn placeholder-btn',
+            title: 'New ingredient',
+            disabled: 'disabled'
+        }, '+');
+        
+        ingredientItem.appendChild(placeholderBtn);
+    }
     
     ingredientsContainer.appendChild(ingredientItem);
     
-    // Re-add the placeholder at the bottom
-    addNewIngredientPlaceholder();
+    // Focus the input if this is a new empty row
+    if (isEmptyRow && !ingredientData) {
+        nameInput.focus();
+    }
+    
+    return ingredientItem;
+}
+
+// Convert a placeholder button to a delete button
+function convertPlaceholderToDeleteButton(ingredientItem) {
+    // Find the placeholder button
+    const placeholderBtn = ingredientItem.querySelector('.placeholder-btn');
+    if (placeholderBtn) {
+        // Remove it
+        placeholderBtn.remove();
+        
+        // Create and add a delete button
+        const removeBtn = createElement('button', { 
+            type: 'button', 
+            class: 'remove-btn',
+            title: 'Remove ingredient'
+        }, '×');
+        
+        removeBtn.addEventListener('click', () => {
+            const ingredientsContainer = document.getElementById('ingredients-container');
+            if (ingredientsContainer.contains(ingredientItem)) {
+                ingredientsContainer.removeChild(ingredientItem);
+                // Trigger auto-save after removing ingredient
+                triggerAutoSave();
+                
+                // Make sure we still have an empty row
+                ensureEmptyIngredientRow();
+            }
+        });
+        
+        ingredientItem.appendChild(removeBtn);
+    }
 }
 
 // Save recipe from form
